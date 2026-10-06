@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bộ xử lý PDF - Công cụ PDF Trực tuyến Bảo mật & Nhanh chóng</title>
+    <meta name="description" content="Bộ công cụ xử lý PDF trực tiếp trên trình duyệt: ghép, tách, xóa trang, xoay trang, sắp xếp, chèn ảnh, nén và đặt mật khẩu PDF 100% bảo mật.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PDF Libraries CDN -->
+    <!-- @cantoo/pdf-lib (supports PDF manipulation & AES/RC4 client-side encryption) -->
+    <script src="https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib/dist/pdf-lib.min.js"></script>
+    
+    <!-- PDF.js for rendering thumbnails and page extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- JSZip for multi-file packaging -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <!-- Main Navigation Bar (Tool Selector) -->
+    <nav class="tool-navigation">
+        <div class="container nav-scroll-container">
+            <div class="nav-tabs" role="tablist">
+                <button class="nav-tab active" data-tool="merge" role="tab" aria-selected="true">
+                    <i data-lucide="layers"></i>
+                    <span>Ghép PDF</span>
+                </button>
+                <button class="nav-tab" data-tool="split" role="tab" aria-selected="false">
+                    <i data-lucide="scissors"></i>
+                    <span>Tách PDF</span>
+                </button>
+                <button class="nav-tab" data-tool="delete" role="tab" aria-selected="false">
+                    <i data-lucide="trash-2"></i>
+                    <span>Xóa trang</span>
+                </button>
+                <button class="nav-tab" data-tool="rotate" role="tab" aria-selected="false">
+                    <i data-lucide="rotate-cw"></i>
+                    <span>Xoay trang</span>
+                </button>
+                <button class="nav-tab" data-tool="reorder" role="tab" aria-selected="false">
+                    <i data-lucide="arrow-up-down"></i>
+                    <span>Sắp xếp trang</span>
+                </button>
+                <button class="nav-tab" data-tool="add-image" role="tab" aria-selected="false">
+                    <i data-lucide="image-plus"></i>
+                    <span>Thêm ảnh vào PDF</span>
+                </button>
+                <button class="nav-tab" data-tool="compress" role="tab" aria-selected="false">
+                    <i data-lucide="minimize-2"></i>
+                    <span>Nén PDF</span>
+                </button>
+                <button class="nav-tab" data-tool="password" role="tab" aria-selected="false">
+                    <i data-lucide="lock"></i>
+                    <span>Đặt mật khẩu</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content container">
+
+        <!-- ==================== 1. TOOL: GHÉP PDF ==================== -->
+        <section id="tool-merge" class="tool-panel active">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="layers"></i> Ghép nhiều file PDF</h2>
+                    <p>Chọn và kết hợp nhiều file PDF thành một tài liệu duy nhất theo thứ tự mong muốn.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="merge-drop-zone">
+                <input type="file" id="merge-file-input" multiple accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả các file PDF vào đây</h3>
+                    <p>hoặc nhấn để duyệt file từ máy tính (chọn nhiều file)</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('merge-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Merge Workspace (List of uploaded PDFs) -->
+            <div class="workspace-area hidden" id="merge-workspace">
+                <div class="workspace-header">
+                    <div class="workspace-title">
+                        <span class="badge" id="merge-file-count">0 file</span>
+                        <span>Danh sách file cần ghép (Kéo thả hoặc dùng mũi tên để đổi thứ tự)</span>
+                    </div>
+                    <div class="workspace-actions">
+                        <button class="btn btn-outline btn-sm" id="merge-add-more-btn">
+                            <i data-lucide="plus"></i> Thêm file
+                        </button>
+                        <button class="btn btn-ghost btn-sm text-danger" id="merge-clear-all-btn">
+                            <i data-lucide="trash-2"></i> Xóa tất cả
+                        </button>
+                    </div>
+                </div>
+
+                <ul class="file-list-sortable" id="merge-file-list">
+                    <!-- Dynamic File Items -->
+                </ul>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="merge-process-btn">
+                        <i data-lucide="layers"></i> Ghép & Xuất file PDF
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 2. TOOL: TÁCH PDF ==================== -->
+        <section id="tool-split" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="scissors"></i> Tách file PDF</h2>
+                    <p>Tách từng trang riêng lẻ hoặc chia nhỏ tài liệu theo các khoảng trang tùy chỉnh.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="split-drop-zone">
+                <input type="file" id="split-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF vào đây</h3>
+                    <p>hoặc nhấn để chọn file cần tách</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('split-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Split Workspace -->
+            <div class="workspace-area hidden" id="split-workspace">
+                <div class="file-summary-card" id="split-file-summary">
+                    <div class="file-summary-icon"><i data-lucide="file-text"></i></div>
+                    <div class="file-summary-info">
+                        <h4 id="split-filename">document.pdf</h4>
+                        <p><span id="split-filesize">0 KB</span> • <strong id="split-pagecount">0</strong> trang</p>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" id="split-change-file-btn">
+                        <i data-lucide="refresh-cw"></i> Đổi file
+                    </button>
+                </div>
+
+                <div class="split-options-card">
+                    <h3>Chọn phương thức tách:</h3>
+                    
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="split-mode" value="all" checked>
+                            <div class="radio-card-content">
+                                <div class="radio-icon"><i data-lucide="files"></i></div>
+                                <div>
+                                    <strong>Tách tất cả các trang</strong>
+                                    <p>Xuất mỗi trang thành 1 file PDF riêng lẻ và đóng gói dạng .ZIP</p>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="radio-card">
+                            <input type="radio" name="split-mode" value="ranges">
+                            <div class="radio-card-content">
+                                <div class="radio-icon"><i data-lucide="git-branch"></i></div>
+                                <div>
+                                    <strong>Tách theo khoảng trang / nhóm trang</strong>
+                                    <p>Tách theo các dải trang như <code>1-3, 4-8, 9-12</code></p>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="radio-card">
+                            <input type="radio" name="split-mode" value="extract">
+                            <div class="radio-card-content">
+                                <div class="radio-icon"><i data-lucide="check-square"></i></div>
+                                <div>
+                                    <strong>Trích xuất trang cụ thể</strong>
+                                    <p>Lấy riêng các trang được chỉ định (ví dụ: <code>1, 3, 5, 8-10</code>) thành 1 file duy nhất</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Range Input container -->
+                    <div class="range-input-container hidden" id="split-ranges-input-box">
+                        <label for="split-ranges-input"><strong>Nhập các khoảng trang cần tách:</strong></label>
+                        <div class="input-with-hint">
+                            <input type="text" id="split-ranges-input" class="form-control" placeholder="Ví dụ: 1-3, 4-8, 9-12">
+                            <small class="form-hint">Dùng dấu gạch nối <code>-</code> cho khoảng trang và dấu phẩy <code>,</code> để ngăn cách các file đầu ra.</small>
+                        </div>
+                        <div class="range-preview-badge" id="split-range-preview">
+                            <!-- Live range breakdown badge -->
+                        </div>
+                    </div>
+
+                    <!-- Extract Input container -->
+                    <div class="range-input-container hidden" id="split-extract-input-box">
+                        <label for="split-extract-input"><strong>Nhập các trang muốn trích xuất:</strong></label>
+                        <div class="input-with-hint">
+                            <input type="text" id="split-extract-input" class="form-control" placeholder="Ví dụ: 1, 3, 5-7, 10">
+                            <small class="form-hint">Các trang này sẽ được trích ra và ghép thành 1 file PDF mới.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="split-process-btn">
+                        <i data-lucide="scissors"></i> Tiến hành tách PDF
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 3. TOOL: XÓA TRANG ==================== -->
+        <section id="tool-delete" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="trash-2"></i> Xóa trang PDF</h2>
+                    <p>Nhấp vào các trang bạn muốn loại bỏ và xuất ra tài liệu mới.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="delete-drop-zone">
+                <input type="file" id="delete-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF vào đây để xóa trang</h3>
+                    <p>hoặc nhấn để chọn file</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('delete-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Delete Workspace (Grid of Thumbnails) -->
+            <div class="workspace-area hidden" id="delete-workspace">
+                <div class="workspace-toolbar">
+                    <div class="toolbar-left">
+                        <span class="badge badge-info" id="delete-page-summary">Tổng cộng: 0 trang</span>
+                        <span class="badge badge-danger hidden" id="delete-selected-summary">Đã chọn xóa: 0 trang</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-outline btn-sm" id="delete-select-even-btn">Chọn trang chẵn</button>
+                        <button class="btn btn-outline btn-sm" id="delete-select-odd-btn">Chọn trang lẻ</button>
+                        <button class="btn btn-ghost btn-sm" id="delete-select-all-btn">Chọn tất cả</button>
+                        <button class="btn btn-ghost btn-sm" id="delete-deselect-all-btn">Bỏ chọn</button>
+                    </div>
+                </div>
+
+                <div class="thumbnail-grid" id="delete-grid">
+                    <!-- Page Thumbnails will be rendered here -->
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-danger btn-lg" id="delete-process-btn" disabled>
+                        <i data-lucide="trash-2"></i> Xóa các trang đã chọn & Tải PDF
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 4. TOOL: XOAY TRANG ==================== -->
+        <section id="tool-rotate" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="rotate-cw"></i> Xoay trang PDF</h2>
+                    <p>Xoay 90°, 180° hoặc 270° từng trang riêng lẻ hoặc toàn bộ tài liệu.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="rotate-drop-zone">
+                <input type="file" id="rotate-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF vào đây để xoay</h3>
+                    <p>hoặc nhấn để chọn file</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('rotate-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rotate Workspace -->
+            <div class="workspace-area hidden" id="rotate-workspace">
+                <div class="workspace-toolbar">
+                    <div class="toolbar-left">
+                        <span class="badge badge-info" id="rotate-page-summary">0 trang</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-outline btn-sm" id="rotate-all-left-btn">
+                            <i data-lucide="rotate-ccw"></i> Xoay tất cả -90°
+                        </button>
+                        <button class="btn btn-outline btn-sm" id="rotate-all-right-btn">
+                            <i data-lucide="rotate-cw"></i> Xoay tất cả +90°
+                        </button>
+                        <button class="btn btn-outline btn-sm" id="rotate-all-180-btn">
+                            <i data-lucide="repeat"></i> Xoay 180°
+                        </button>
+                        <button class="btn btn-ghost btn-sm" id="rotate-reset-btn">
+                            <i data-lucide="undo"></i> Khôi phục gốc
+                        </button>
+                    </div>
+                </div>
+
+                <div class="thumbnail-grid" id="rotate-grid">
+                    <!-- Page Thumbnails with individual rotate buttons -->
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="rotate-process-btn">
+                        <i data-lucide="check"></i> Lưu & Xuất file PDF đã xoay
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 5. TOOL: SẮP XẾP TRANG ==================== -->
+        <section id="tool-reorder" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="arrow-up-down"></i> Sắp xếp thứ tự trang PDF</h2>
+                    <p>Kéo-thả các trang trực tiếp để đổi thứ tự hoặc đảo ngược toàn bộ trang trong 1 cú nhấp.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="reorder-drop-zone">
+                <input type="file" id="reorder-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF vào đây để sắp xếp lại</h3>
+                    <p>hoặc nhấn để chọn file</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('reorder-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reorder Workspace -->
+            <div class="workspace-area hidden" id="reorder-workspace">
+                <div class="workspace-toolbar">
+                    <div class="toolbar-left">
+                        <span class="badge badge-info" id="reorder-page-summary">0 trang</span>
+                        <span class="hint-text"><i data-lucide="mouse-pointer"></i> Kéo thả để thay đổi vị trí trang</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-outline btn-sm btn-accent" id="reorder-reverse-btn">
+                            <i data-lucide="arrow-left-right"></i> Đảo ngược toàn bộ thứ tự trang
+                        </button>
+                        <button class="btn btn-ghost btn-sm" id="reorder-reset-btn">
+                            <i data-lucide="refresh-cw"></i> Đặt lại ban đầu
+                        </button>
+                    </div>
+                </div>
+
+                <div class="thumbnail-grid sortable-grid" id="reorder-grid">
+                    <!-- Drag and drop sortable page cards -->
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="reorder-process-btn">
+                        <i data-lucide="check"></i> Lưu & Xuất PDF theo thứ tự mới
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 6. TOOL: THÊM ẢNH VÀO PDF ==================== -->
+        <section id="tool-add-image" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="image-plus"></i> Thêm ảnh vào tài liệu PDF</h2>
+                    <p>Chèn ảnh (JPG, PNG, WEBP) thành trang PDF mới ở đầu, cuối hoặc vị trí bất kỳ chuẩn A4.</p>
+                </div>
+            </div>
+
+            <!-- Multi-file Drop Zone for Add Image (PDF + Images) -->
+            <div class="dual-upload-container" id="add-image-dual-upload">
+                <!-- Step 1: Base PDF -->
+                <div class="dual-upload-card" id="add-image-pdf-card">
+                    <div class="step-badge">Bước 1</div>
+                    <h3>Chọn file PDF gốc</h3>
+                    <div class="mini-drop-zone" id="add-image-pdf-drop-zone">
+                        <input type="file" id="add-image-pdf-input" accept=".pdf,application/pdf" hidden>
+                        <div class="mini-drop-content" id="add-image-pdf-content">
+                            <i data-lucide="file-text"></i>
+                            <span>Chọn hoặc kéo file PDF vào đây</span>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('add-image-pdf-input').click()">Chọn PDF</button>
+                        </div>
+                        <div class="mini-file-info hidden" id="add-image-pdf-selected">
+                            <i data-lucide="check-circle" class="text-success"></i>
+                            <div class="mini-file-details">
+                                <strong id="add-image-pdf-name">file.pdf</strong>
+                                <span id="add-image-pdf-meta">0 trang</span>
+                            </div>
+                            <button class="btn btn-ghost btn-xs" id="add-image-pdf-remove"><i data-lucide="x"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Image Files -->
+                <div class="dual-upload-card" id="add-image-img-card">
+                    <div class="step-badge">Bước 2</div>
+                    <h3>Chọn ảnh cần chèn</h3>
+                    <div class="mini-drop-zone" id="add-image-img-drop-zone">
+                        <input type="file" id="add-image-img-input" accept="image/jpeg,image/png,image/webp,image/jpg" multiple hidden>
+                        <div class="mini-drop-content" id="add-image-img-content">
+                            <i data-lucide="image"></i>
+                            <span>Chọn JPG, JPEG, PNG, WEBP</span>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('add-image-img-input').click()">Chọn ảnh</button>
+                        </div>
+                        <div class="mini-image-previews hidden" id="add-image-previews-container">
+                            <!-- Thumbnails of selected images -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Position & Settings Area -->
+            <div class="workspace-area hidden" id="add-image-workspace">
+                <div class="settings-card">
+                    <h3>Vị trí chèn ảnh vào PDF:</h3>
+                    
+                    <div class="radio-group-horizontal">
+                        <label class="radio-pill">
+                            <input type="radio" name="image-position" value="start">
+                            <span><i data-lucide="arrow-up-to-line"></i> Ở đầu tài liệu (Trang 1)</span>
+                        </label>
+                        <label class="radio-pill">
+                            <input type="radio" name="image-position" value="end" checked>
+                            <span><i data-lucide="arrow-down-to-line"></i> Ở cuối tài liệu (Trang cuối)</span>
+                        </label>
+                        <label class="radio-pill">
+                            <input type="radio" name="image-position" value="custom">
+                            <span><i data-lucide="chevrons-right"></i> Sau trang cụ thể</span>
+                        </label>
+                    </div>
+
+                    <div class="custom-page-input-row hidden" id="image-custom-page-row">
+                        <label for="image-insert-page-num">Chèn vào sau trang số:</label>
+                        <input type="number" id="image-insert-page-num" class="form-control form-control-sm" min="1" value="1" style="width: 100px;">
+                        <span class="text-muted">(trong tổng số <span id="image-max-page-label">1</span> trang)</span>
+                    </div>
+
+                    <div class="option-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="image-fit-a4" checked>
+                            <span>Chuẩn hóa kích thước trang A4 (595 × 842 pt), tự động căn giữa và giữ nguyên tỷ lệ ảnh sắc nét</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="add-image-process-btn">
+                        <i data-lucide="image-plus"></i> Chèn ảnh & Xuất file PDF
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 7. TOOL: NÉN PDF ==================== -->
+        <section id="tool-compress" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="minimize-2"></i> Nén giảm dung lượng PDF</h2>
+                    <p>Giảm dung lượng file để dễ dàng gửi email và lưu trữ với 3 mức độ nén tối ưu.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="compress-drop-zone">
+                <input type="file" id="compress-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF cần nén vào đây</h3>
+                    <p>hoặc nhấn để chọn file</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('compress-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compress Workspace -->
+            <div class="workspace-area hidden" id="compress-workspace">
+                <div class="file-summary-card">
+                    <div class="file-summary-icon"><i data-lucide="file-text"></i></div>
+                    <div class="file-summary-info">
+                        <h4 id="compress-filename">document.pdf</h4>
+                        <p>Dung lượng gốc: <strong id="compress-original-size" class="text-primary">0 MB</strong> • <span id="compress-pagecount">0 trang</span></p>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" id="compress-change-file-btn">
+                        <i data-lucide="refresh-cw"></i> Đổi file
+                    </button>
+                </div>
+
+                <div class="compress-levels-container">
+                    <h3>Chọn mức độ nén:</h3>
+                    
+                    <div class="level-cards-grid">
+                        <label class="level-card">
+                            <input type="radio" name="compress-level" value="light">
+                            <div class="level-card-inner">
+                                <div class="level-header">
+                                    <span class="level-tag tag-light">Nhẹ</span>
+                                    <i data-lucide="sparkles"></i>
+                                </div>
+                                <h4>Chất lượng cao</h4>
+                                <p>Nén nhẹ, giữ độ sắc nét hình ảnh và văn bản tối đa. Phù hợp cho in ấn và tài liệu quan trọng.</p>
+                            </div>
+                        </label>
+
+                        <label class="level-card">
+                            <input type="radio" name="compress-level" value="medium" checked>
+                            <div class="level-card-inner recommended">
+                                <div class="level-header">
+                                    <span class="level-tag tag-medium">Cân bằng</span>
+                                    <span class="badge-rec">Khuyên dùng</span>
+                                </div>
+                                <h4>Tối ưu tiêu chuẩn</h4>
+                                <p>Cân bằng lý tưởng giữa dung lượng giảm và chất lượng hiển thị rõ nét trên màn hình.</p>
+                            </div>
+                        </label>
+
+                        <label class="level-card">
+                            <input type="radio" name="compress-level" value="strong">
+                            <div class="level-card-inner">
+                                <div class="level-header">
+                                    <span class="level-tag tag-strong">Mạnh</span>
+                                    <i data-lucide="zap"></i>
+                                </div>
+                                <h4>Dung lượng nhỏ nhất</h4>
+                                <p>Giảm dung lượng tối đa để đính kèm qua email giới hạn dung lượng hoặc chia sẻ nhanh.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="compress-process-btn">
+                        <i data-lucide="minimize-2"></i> Bắt đầu nén PDF
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== 8. TOOL: ĐẶT MẬT KHẨU PDF ==================== -->
+        <section id="tool-password" class="tool-panel">
+            <div class="tool-header">
+                <div class="tool-info">
+                    <h2><i data-lucide="lock"></i> Đặt mật khẩu bảo vệ PDF</h2>
+                    <p>Mã hóa chuẩn AES/RC4 bảo vệ tài liệu; người mở file bắt buộc phải nhập mật khẩu chính xác.</p>
+                </div>
+            </div>
+
+            <!-- Upload Zone -->
+            <div class="drop-zone" id="password-drop-zone">
+                <input type="file" id="password-file-input" accept=".pdf,application/pdf" hidden>
+                <div class="drop-zone-content">
+                    <div class="upload-icon-wrapper">
+                        <i data-lucide="cloud-upload"></i>
+                    </div>
+                    <h3>Kéo & Thả file PDF cần bảo vệ vào đây</h3>
+                    <p>hoặc nhấn để chọn file</p>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('password-file-input').click()">
+                        <i data-lucide="folder-open"></i> Chọn file PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Password Workspace -->
+            <div class="workspace-area hidden" id="password-workspace">
+                <div class="file-summary-card">
+                    <div class="file-summary-icon"><i data-lucide="file-text"></i></div>
+                    <div class="file-summary-info">
+                        <h4 id="password-filename">document.pdf</h4>
+                        <p><span id="password-filesize">0 KB</span> • <span id="password-pagecount">0 trang</span></p>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" id="password-change-file-btn">
+                        <i data-lucide="refresh-cw"></i> Đổi file
+                    </button>
+                </div>
+
+                <div class="password-form-card">
+                    <h3>Thiết lập mật khẩu bảo vệ</h3>
+                    
+                    <div class="form-group">
+                        <label for="pdf-user-password"><strong>Nhập mật khẩu mở file <span class="text-danger">*</span>:</strong></label>
+                        <div class="input-password-wrapper">
+                            <input type="password" id="pdf-user-password" class="form-control" placeholder="Nhập mật khẩu an toàn...">
+                            <button type="button" class="btn-toggle-pwd" data-target="pdf-user-password">
+                                <i data-lucide="eye"></i>
+                            </button>
+                        </div>
+                        <div class="pwd-strength-bar">
+                            <div class="pwd-strength-fill" id="pwd-strength-fill"></div>
+                        </div>
+                        <small class="strength-text" id="pwd-strength-text">Độ mạnh mật khẩu</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pdf-confirm-password"><strong>Xác nhận lại mật khẩu <span class="text-danger">*</span>:</strong></label>
+                        <div class="input-password-wrapper">
+                            <input type="password" id="pdf-confirm-password" class="form-control" placeholder="Nhập lại mật khẩu vừa đặt...">
+                            <button type="button" class="btn-toggle-pwd" data-target="pdf-confirm-password">
+                                <i data-lucide="eye"></i>
+                            </button>
+                        </div>
+                        <small class="text-danger hidden" id="pwd-match-error">Mật khẩu xác nhận không khớp!</small>
+                    </div>
+
+                    <div class="security-info-box">
+                        <i data-lucide="info"></i>
+                        <span>File được mã hóa trực tiếp bằng thuật toán bảo mật của chuẩn PDF. Hãy ghi nhớ mật khẩu, nếu quên sẽ không thể khôi phục lại tài liệu!</span>
+                    </div>
+                </div>
+
+                <div class="action-footer">
+                    <button class="btn btn-primary btn-lg" id="password-process-btn">
+                        <i data-lucide="lock"></i> Mã hóa & Tải PDF được bảo vệ
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== UNIVERSAL PROGRESS MODAL / OVERLAY ==================== -->
+        <div class="process-overlay hidden" id="process-overlay">
+            <div class="process-modal">
+                <div class="spinner-wrapper">
+                    <div class="custom-spinner"></div>
+                </div>
+                <h3 id="process-title">Đang xử lý tài liệu...</h3>
+                <p id="process-desc">Vui lòng chờ trong giây lát, mọi thao tác đang diễn ra trực tiếp trên trình duyệt của bạn.</p>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-meta">
+                    <span id="progress-step-text">Khởi tạo...</span>
+                    <strong id="progress-percent-text">0%</strong>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ==================== UNIVERSAL RESULT MODAL / SECTION ==================== -->
+        <div class="result-modal-overlay hidden" id="result-overlay">
+            <div class="result-modal">
+                <div class="result-icon-wrapper success">
+                    <i data-lucide="circle-check-big"></i>
+                </div>
+                <h2 id="result-title">Xử lý thành công!</h2>
+                <p id="result-desc">Tài liệu của bạn đã được tạo hoàn tất và sẵn sàng để tải về.</p>
+
+                <!-- Comparison box (used especially for compress) -->
+                <div class="size-comparison-box hidden" id="result-comparison-box">
+                    <div class="comp-item">
+                        <span class="comp-label">Dung lượng gốc:</span>
+                        <strong id="comp-original-size">0 KB</strong>
+                    </div>
+                    <div class="comp-arrow"><i data-lucide="arrow-right"></i></div>
+                    <div class="comp-item">
+                        <span class="comp-label">Dung lượng mới:</span>
+                        <strong id="comp-new-size" class="text-success">0 KB</strong>
+                    </div>
+                    <div class="comp-badge" id="comp-badge-save">-0%</div>
+                </div>
+
+                <!-- Honest compression note if no significant reduction -->
+                <div class="alert-info-box hidden" id="result-honest-note">
+                    <i data-lucide="info"></i>
+                    <span>Tài liệu này vốn đã được tối ưu hóa trước đó nên dung lượng không giảm đáng kể. Tuy nhiên chất lượng file vẫn được đảm bảo nguyên vẹn!</span>
+                </div>
+
+                <div class="result-file-details">
+                    <div class="result-file-icon">
+                        <i data-lucide="file-check" id="result-file-icon-type"></i>
+                    </div>
+                    <div class="result-file-info">
+                        <h4 id="result-filename">output.pdf</h4>
+                        <span id="result-filesize">0 KB</span>
+                    </div>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn btn-success btn-lg" id="result-download-btn">
+                        <i data-lucide="download"></i> Tải file về máy
+                    </button>
+                    <button class="btn btn-outline" id="result-reset-btn">
+                        <i data-lucide="refresh-cw"></i> Xử lý file khác
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="container footer-content">
+            <p>© 2026 <strong>Bộ xử lý PDF</strong> • 100% Xử lý nội bộ trên trình duyệt • Bảo mật & Miễn phí</p>
+            <div class="footer-badges">
+                <span><i data-lucide="shield-check"></i> Không lưu trữ dữ liệu</span>
+                <span><i data-lucide="cpu"></i> Hiệu năng cao</span>
+                <span><i data-lucide="lock"></i> Mã hóa an toàn</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+</html>
+
